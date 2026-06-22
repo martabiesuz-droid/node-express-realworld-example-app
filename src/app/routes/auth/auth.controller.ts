@@ -1,6 +1,9 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import auth from './auth';
 import { createUser, getCurrentUser, login, updateUser } from './auth.service';
+import { createLoginRateLimiter } from './login-rate-limiter';
+
+const loginRateLimiter = createLoginRateLimiter();
 
 const router = Router();
 
@@ -27,7 +30,7 @@ router.post('/users', async (req: Request, res: Response, next: NextFunction) =>
  * @bodyparam user User
  * @returns user User
  */
-router.post('/users/login', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/users/login', loginRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = await login(req.body.user);
     res.json({ user });

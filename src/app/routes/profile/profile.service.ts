@@ -1,60 +1,35 @@
-import prisma from '../../../prisma/prisma-client';
-import profileMapper from './profile.utils';
 import HttpException from '../../models/http-exception.model';
+import profileMapper from './profile.utils';
+import { connectFollower, disconnectFollower, findUserByUsername } from './profile.repository';
 
-export const getProfile = async (usernamePayload: string, id?: number) => {
-  const profile = await prisma.user.findUnique({
-    where: {
-      username: usernamePayload,
-    },
-    include: {
-      followedBy: true,
-    },
-  });
+export const getProfile = async (username: string, userId?: number) => {
+  const profile = await findUserByUsername(username);
 
   if (!profile) {
     throw new HttpException(404, {});
   }
 
-  return profileMapper(profile, id);
+  return profileMapper(profile, userId);
 };
 
-export const followUser = async (usernamePayload: string, id: number) => {
-  const profile = await prisma.user.update({
-    where: {
-      username: usernamePayload,
-    },
-    data: {
-      followedBy: {
-        connect: {
-          id,
-        },
-      },
-    },
-    include: {
-      followedBy: true,
-    },
-  });
+export const followUser = async (username: string, userId: number) => {
+  const existing = await findUserByUsername(username);
 
-  return profileMapper(profile, id);
+  if (!existing) {
+    throw new HttpException(404, {});
+  }
+
+  const profile = await connectFollower(username, userId);
+  return profileMapper(profile, userId);
 };
 
-export const unfollowUser = async (usernamePayload: string, id: number) => {
-  const profile = await prisma.user.update({
-    where: {
-      username: usernamePayload,
-    },
-    data: {
-      followedBy: {
-        disconnect: {
-          id,
-        },
-      },
-    },
-    include: {
-      followedBy: true,
-    },
-  });
+export const unfollowUser = async (username: string, userId: number) => {
+  const existing = await findUserByUsername(username);
 
-  return profileMapper(profile, id);
+  if (!existing) {
+    throw new HttpException(404, {});
+  }
+
+  const profile = await disconnectFollower(username, userId);
+  return profileMapper(profile, userId);
 };

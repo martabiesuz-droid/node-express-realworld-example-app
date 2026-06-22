@@ -1,35 +1,21 @@
 import * as bcrypt from 'bcryptjs';
 import { RegisterInput } from './register-input.model';
-import prisma from '../../../prisma/prisma-client';
+import { LoginInput } from './login-input.model';
+import { UpdateUserInput } from './update-user-input.model';
 import HttpException from '../../models/http-exception.model';
 import { RegisteredUser } from './registered-user.model';
 import generateToken from './token.utils';
-import { User } from './user.model';
+import * as authRepository from './auth.repository';
 
 const checkUserUniqueness = async (email: string, username: string) => {
-  const existingUserByEmail = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-    select: {
-      id: true,
-    },
-  });
+  const existingByEmail = await authRepository.findUserByEmail(email);
+  const existingByUsername = await authRepository.findUserByUsername(username);
 
-  const existingUserByUsername = await prisma.user.findUnique({
-    where: {
-      username,
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (existingUserByEmail || existingUserByUsername) {
+  if (existingByEmail || existingByUsername) {
     throw new HttpException(422, {
       errors: {
-        ...(existingUserByEmail ? { email: ['has already been taken'] } : {}),
-        ...(existingUserByUsername ? { username: ['has already been taken'] } : {}),
+        ...(existingByEmail ? { email: ['has already been taken'] } : {}),
+        ...(existingByUsername ? { username: ['has already been taken'] } : {}),
       },
     });
   }
@@ -57,22 +43,13 @@ export const createUser = async (input: RegisterInput): Promise<RegisteredUser> 
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
-    data: {
-      username,
-      email,
-      password: hashedPassword,
-      ...(image ? { image } : {}),
-      ...(bio ? { bio } : {}),
-      ...(demo ? { demo } : {}),
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      bio: true,
-      image: true,
-    },
+  const user = await authRepository.createUser({
+    email,
+    username,
+    password: hashedPassword,
+    image,
+    bio,
+    demo,
   });
 
   return {
@@ -81,7 +58,7 @@ export const createUser = async (input: RegisterInput): Promise<RegisteredUser> 
   };
 };
 
-export const login = async (userPayload: any) => {
+export const login = async (userPayload: LoginInput) => {
   const email = userPayload.email?.trim();
   const password = userPayload.password?.trim();
 
@@ -93,19 +70,7 @@ export const login = async (userPayload: any) => {
     throw new HttpException(422, { errors: { password: ["can't be blank"] } });
   }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      password: true,
-      bio: true,
-      image: true,
-    },
-  });
+  const user = await authRepository.findUserByEmailWithCredentials(email);
 
   if (user) {
     const match = await bcrypt.compare(password, user.password);
@@ -129,18 +94,11 @@ export const login = async (userPayload: any) => {
 };
 
 export const getCurrentUser = async (id: number) => {
-  const user = (await prisma.user.findUnique({
-    where: {
-      id,
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      bio: true,
-      image: true,
-    },
-  })) as User;
+  const user = await authRepository.findUserById(id);
+
+  if (!user) {
+    throw new HttpException(404, { errors: { user: ['not found'] } });
+  }
 
   return {
     ...user,
@@ -148,32 +106,13 @@ export const getCurrentUser = async (id: number) => {
   };
 };
 
-export const updateUser = async (userPayload: any, id: number) => {
-  const { email, username, password, image, bio } = userPayload;
-  let hashedPassword;
+export const updateUser = async (userPayload: UpdateUserInput, id: number) => {
+  const { password } = userPayload;
+  const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
 
-  if (password) {
-    hashedPassword = await bcrypt.hash(password, 10);
-  }
-
-  const user = await prisma.user.update({
-    where: {
-      id: id,
-    },
-    data: {
-      ...(email ? { email } : {}),
-      ...(username ? { username } : {}),
-      ...(password ? { password: hashedPassword } : {}),
-      ...(image ? { image } : {}),
-      ...(bio ? { bio } : {}),
-    },
-    select: {
-      id: true,
-      email: true,
-      username: true,
-      bio: true,
-      image: true,
-    },
+  const user = await authRepository.updateUser(id, {
+    ...userPayload,
+    ...(hashedPassword ? { password: hashedPassword } : {}),
   });
 
   return {

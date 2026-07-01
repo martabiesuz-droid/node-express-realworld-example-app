@@ -3,6 +3,9 @@ import cors from 'cors';
 import * as bodyParser from 'body-parser';
 import { UnauthorizedError } from 'express-jwt';
 import routes from './app/routes/routes';
+import swaggerUi from 'swagger-ui-express';
+import * as fs from 'fs';
+import * as path from 'path';
 import HttpException from './app/models/http-exception.model';
 
 const app = express();
@@ -16,6 +19,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(routes);
 
+const swaggerDocument = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'docs', 'openapi.json'), 'utf8'));
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // Serves images
 app.use(express.static(__dirname + '/assets'));
 

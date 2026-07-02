@@ -25,8 +25,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    command: sh -c "cd api && npx prisma@4.16.2 db push --schema=src/prisma/schema.prisma --accept-data-loss && node /app/api/main.js"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/tags 2>/dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5

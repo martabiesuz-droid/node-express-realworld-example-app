@@ -27,7 +27,35 @@ services:
         condition: service_healthy
     command: sh -c "cd api && npx prisma@4.16.2 db push --schema=src/prisma/schema.prisma --accept-data-loss && node /app/api/main.js"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/tags 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/tags', r => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))\""]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      api:
+        condition: service_healthy
+
+  loki:
+    image: grafana/loki:3.1.0
+    ports:
+      - "3101:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    ports:
+      - "3002:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki

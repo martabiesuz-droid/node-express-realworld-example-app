@@ -40,3 +40,6 @@ testem.log
 Thumbs.db
 
 .nx/cache
+.stryker-tmp
+reports/
+stryker-run.log

@@ -1,0 +1,88 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "editable": true,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "rate(http_requests_total{job=\"realworld-node\"}[1m])",
+          "legendFormat": "{{route}} {{method}} {{status}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Requests por Endpoint (por segundo)",
+      "description": "Mostra quantas requisicoes por segundo cada endpoint esta recebendo.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"realworld-node\"}[1m]))",
+          "legendFormat": "{{route}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Tempo de Resposta por Endpoint (segundos)",
+      "description": "Mostra o tempo que a API leva para responder. Valores acima de 1s indicam lentidao.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+"fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 },
+      "id": 3,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "sum(http_requests_total{job=\"realworld-node\", status=~\"2..\"})",
+          "legendFormat": "Sucesso",
+          "refId": "A"
+        }
+      ],
+      "title": "Total de Requisicoes com Sucesso",
+      "description": "Total de requisicoes bem-sucedidas (status 2xx).",
+      "type": "stat"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "unit": "short", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 },
+      "id": 4,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [
+        {
+          "datasource": "Prometheus",
+          "expr": "sum(http_requests_total{job=\"realworld-node\", status=~\"5..\"})",
+          "legendFormat": "Erros",
+          "refId": "A"
+        }
+      ],
+      "title": "Total de Erros (5xx)",
+      "description": "Total de erros internos. Verde = zero erros.",
+      "type": "stat"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "tags": ["realworld", "node"],
+  "time": { "from": "now-15m", "to": "now" },
+  "timezone": "browser",
+  "title": "RealWorld Node API",
+  "uid": "realworld-node",
+  "version": 1
+}
